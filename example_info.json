@@ -1,0 +1,12 @@
+{
+  "account": {
+    "email": "[WIX_USERNAME]",
+    "password": "[WIX_PASSWORD]"
+  },
+  "baseUrl": "PlaceYourBaseURLHere",
+  "subDomains": [
+    "[FULL_SUB_DOMAIN_TO_TLD]",
+    ""
+  ],
+  "jwtHeader": ""
+}
