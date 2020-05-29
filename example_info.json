@@ -3,7 +3,7 @@
     "email": "[WIX_USERNAME]",
     "password": "[WIX_PASSWORD]"
   },
-  "baseUrl": "PlaceYourBaseURLHere",
+  "baseUrl": "[BASE_URL]",
   "subDomains": [
     "[FULL_SUB_DOMAIN_TO_TLD]",
     ""
