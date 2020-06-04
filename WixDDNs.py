@@ -4,7 +4,7 @@ import json
 from os import getcwd, path
 
 
-def get_jwt(acct):
+def get_jwt(my_acct):
     url = "https://users.wix.com/signin"
     session_id = ''
     payload = {
@@ -12,7 +12,15 @@ def get_jwt(acct):
         'redirectTo': "https:%2F%2Fwww.wix.com%2Faccount%2Fsites"
     }
     headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept': '''
+                  text/html,
+                  application/xhtml+xml,
+                  application/xml;q=0.9,
+                  image/webp,
+                  image/apng,
+                  */*;q=0.8,
+                  application/signed-exchange;v=b3;q=0.9
+                  ''',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'en-US,en;q=0.9',
         'Cache-Control': 'max-age=0',
@@ -34,8 +42,8 @@ def get_jwt(acct):
     url = "https://users.wix.com/auth/v2/login/"
 
     payload = 'email={}&password={}&rememberMe=true&ldSessionID={}'.format(
-        acct['email'],
-        acct['password'],
+        my_acct['email'],
+        my_acct['password'],
         session_id
     )
     headers = {
@@ -127,14 +135,12 @@ def create_record(base_url, n_host, n_value, jwt_header):
 
 def get_ip_wmip():
     r = str(requests.get('http://whatismyip.org/my-ip-address').content)
-    get_ip = lambda html: re.findall('<a href="/my-ip-address">(.*?)</a>', html, flags=re.DOTALL)[0].strip()
-    return get_ip(r)
+    return re.findall('<a href="/my-ip-address">(.*?)</a>', r, flags=re.DOTALL)[0].strip()
 
 
 def get_ip_ipchi():
     r = str(requests.get('https://ipchicken.com/').content)
-    get_ip = lambda html: re.findall('<b>(.*?)<br>', html, flags=re.DOTALL)[0].strip().replace('\\n', '')
-    return get_ip(r)
+    return re.findall('<b>(.*?)<br>', r, flags=re.DOTALL)[0].strip().replace('\\n', '')
 
 
 def load_info():
@@ -172,10 +178,10 @@ def get_sub_recs(data, sub_domains=None):
     return rec_list, sub_domains
 
 
-def get_lists(acct, base_url, jwt_header, sub_domains):
+def get_lists(my_acct, base_url, jwt_header, sub_domains):
     recs = get_wix_records(base_url, jwt_header)
     if 'message' in recs:
-        jwt_header = get_jwt(acct)
+        jwt_header = get_jwt(my_acct)
         write_info(jwt_header)
         recs = get_wix_records(base_url, jwt_header)
     return get_sub_recs(recs['records'], sub_domains)
