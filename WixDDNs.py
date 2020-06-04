@@ -1,43 +1,56 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import requests
 import re
 import json
 from os import getcwd, path
 
 
-def get_jwt():
-    opt = Options()
-    opt.headless = True
-    driver = webdriver.Firefox(options=opt)
-    driver.get(
-        "https://users.wix.com/signin?originUrl=https:%2F%2Fwww.wix.com%2Faccount%2Fsites&redirectTo=https:%2F%2Fwww.wix.com%2Faccount%2Fsites&overrideLocale=en"
+def get_jwt(acct):
+    url = "https://users.wix.com/signin"
+    session_id = ''
+    payload = {
+        'originUrl': "https:%2F%2Fwww.wix.com%2Faccount%2Fsites",
+        'redirectTo': "https:%2F%2Fwww.wix.com%2Faccount%2Fsites"
+    }
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'max-age=0',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+    }
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    val = response.headers.get('set-cookie')
+    val_split = val.split(', ')
+
+    for item in val_split:
+        if 'wixCIDX' in item:
+            session_id = item.split('=')[1].split(';')[0]
+
+    url = "https://users.wix.com/auth/v2/login/"
+
+    payload = 'email={}&password={}&rememberMe=true&ldSessionID={}'.format(
+        acct['email'],
+        acct['password'],
+        session_id
     )
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': '*/*',
+        'User-Agent': 'PostmanRuntime/7.24.1'
+    }
 
-    email_elm = driver.find_element_by_id('input_0')
-    email_elm.clear()
-    email_elm.send_keys('support@aphid.io')
-    pwd_elm = driver.find_element_by_id('input_1')
-    pwd_elm.clear()
-    pwd_elm.send_keys('z8dY#p1@')
-    pwd_elm.send_keys(Keys.RETURN)
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "root"))
-        )
-        header = driver.get_cookie('wixSession2')['value']
-    finally:
-        driver.quit()
+    response = requests.request("POST", url, headers=headers, data=payload)
 
-    return header
+    return response.cookies.get_dict()['wixSession2']
 
 
-def get_wix_records(bas_url, jwt_header):
-    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}".format(base)
+def get_wix_records(base_url, jwt_header):
+    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}".format(base_url)
 
     payload = {}
     headers = {
@@ -50,8 +63,8 @@ def get_wix_records(bas_url, jwt_header):
     return json.loads(response.text.encode('utf8'))
 
 
-def update_record(bas_url, u_host, n_value, o_value, jwt_header):
-    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}/records".format(base)
+def update_record(base_url, u_host, n_value, o_value, jwt_header):
+    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}/records".format(base_url)
 
     data = {
         "deletions": [
@@ -85,8 +98,8 @@ def update_record(bas_url, u_host, n_value, o_value, jwt_header):
     return response.text.encode('utf8')
 
 
-def create_record(bas_url, n_host, n_value, jwt_header):
-    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}/records".format(base)
+def create_record(base_url, n_host, n_value, jwt_header):
+    url = "https://www.wix.com/_api/premium-dns/v1/zones/{}/records".format(base_url)
 
     data = {
         "additions": [
@@ -159,10 +172,10 @@ def get_sub_recs(data, sub_domains=None):
     return rec_list, sub_domains
 
 
-def get_lists(base_url, jwt_header, sub_domains):
+def get_lists(acct, base_url, jwt_header, sub_domains):
     recs = get_wix_records(base_url, jwt_header)
     if 'message' in recs:
-        jwt_header = get_jwt()
+        jwt_header = get_jwt(acct)
         write_info(jwt_header)
         recs = get_wix_records(base_url, jwt_header)
     return get_sub_recs(recs['records'], sub_domains)
@@ -185,7 +198,7 @@ if __name__ == '__main__':
     base = info['baseUrl']
     pub_ip = '{}'.format(get_ip_ipchi())
 
-    update_list, create_list = get_lists(base, jwt, sub)
+    update_list, create_list = get_lists(acct, base, jwt, sub)
     update_list = check_ips(update_list, pub_ip)
 
     i = 0
